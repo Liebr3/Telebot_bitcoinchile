@@ -2,6 +2,11 @@ import telebot
 import threading
 from dotenv import load_dotenv
 import os
+from flask import Flask, request
+from pyngrok import ngrok, conf
+
+
+
 
 # Cargar variables de entorno
 load_dotenv()
