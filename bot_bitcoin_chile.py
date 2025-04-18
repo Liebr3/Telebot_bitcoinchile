@@ -5,7 +5,7 @@ import os
 from flask import Flask, request
 from pyngrok import ngrok, conf
 import time 
-
+from waitress import serve # entorno de produccion
 
 
 
@@ -23,6 +23,22 @@ def webhook():
         update = telebot.types.Update.de_json(request.stream.read().decode('UTF-8'))
         bot.process_new_updates([update])
         return 'ok', 200
+
+
+
+def start_ngrok():
+    # Configuración de ngrok    
+    conf.get_default().config_path = "./config_ngrok.yml"
+    conf.get_default().region = "sa"
+    ngrok.set_auth_token(os.getenv("NGROK_TOKEN"))
+    ngrok_tunel = ngrok.connect(5000, bind_tls=True)
+    ngrok_url = ngrok_tunel.public_url
+    print(f"ngrok url: {ngrok_url}")
+    # Configuración del webhook
+    bot.remove_webhook()
+    time.sleep(1)
+    bot.set_webhook(url=ngrok_url)
+    serve(web_server, host="0.0.0.0", port=5000)
 
 
 # bienvenida al usuario
@@ -54,9 +70,6 @@ def price_command(message):
 
 
 
-def recibir_mensajes():
-    bot.infinity_polling()
-
 
 bot.set_my_commands([
     telebot.types.BotCommand("/start", "Descripción del bot"),
@@ -66,29 +79,16 @@ bot.set_my_commands([
     telebot.types.BotCommand("/ath", "Ultimo ATH de BTC")])
 
 
-#*************MAIN
+#*************MAIN********************************************************
 if __name__ == "__main__":
 
     
     print("Start the bot")
-    # Configuración de ngrok    
-    conf.get_default().config_path = "./config_ngrok.yml"
-    conf.get_default().region = "sa"
-    ngrok.set_auth_token(os.getenv("NGROK_TOKEN"))
-    ngrok_tunel = ngrok.connect(5000, bind_tls=True)
-    ngrok_url = ngrok_tunel.public_url
-    print(f"ngrok url: {ngrok_url}")
-    # Configuración del webhook
-    bot.remove_webhook()
-    time.sleep(1)
-    bot.set_webhook(url=ngrok_url)
-    web_server.run(host="0.0.0.0", port=5000)   
-    # Iniciar el servidor Flask    
-
     
-    hilo_bot = threading.Thread(name="hilo_bot", target=recibir_mensajes)
-    hilo_bot.start()
+    # Start ngrok server   
+    tr_ngrok = threading.Thread(name="hilo_bot", target=start_ngrok)
+    tr_ngrok.start()
     
-    print("end")
-#*************END
+    print("through the threads....")
+#*************END*********************************************************
     
